@@ -5,6 +5,7 @@ use tokio::time::sleep;
 
 mod common;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[tokio::test]
 async fn file() -> Result<(), Box<dyn std::error::Error>> {
     common::enable_logging();

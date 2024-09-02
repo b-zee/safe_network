@@ -8,6 +8,7 @@ use sn_protocol::CLOSE_GROUP_SIZE;
 use tokio::{sync::mpsc::Receiver, time::interval};
 
 mod data;
+#[cfg(not(target_arch = "wasm32"))]
 mod files;
 mod registers;
 mod transfers;
