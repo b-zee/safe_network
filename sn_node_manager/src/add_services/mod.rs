@@ -190,21 +190,15 @@ pub async fn add_node(
             match nat_status {
                 NatDetectionStatus::Public => {
                     options.upnp = false;
-                    options.home_network = false;
                 }
                 NatDetectionStatus::UPnP => {
                     options.upnp = true;
-                    options.home_network = false;
                 }
                 NatDetectionStatus::Private => {
                     options.upnp = false;
-                    options.home_network = true;
                 }
             }
-            debug!(
-                "Auto-setting NAT flags: upnp={}, home_network={}",
-                options.upnp, options.home_network
-            );
+            debug!("Auto-setting NAT flags: upnp={}", options.upnp);
         }
 
         let install_ctx = InstallNodeServiceCtxBuilder {
@@ -213,7 +207,6 @@ pub async fn add_node(
             data_dir_path: service_data_dir_path.clone(),
             env_variables: options.env_variables.clone(),
             genesis: options.genesis,
-            home_network: options.home_network,
             local: options.local,
             log_dir_path: service_log_dir_path.clone(),
             log_format: options.log_format,
@@ -244,7 +237,6 @@ pub async fn add_node(
                     connected_peers: None,
                     data_dir_path: service_data_dir_path.clone(),
                     genesis: options.genesis,
-                    home_network: options.home_network,
                     listen_addr: None,
                     local: options.local,
                     log_dir_path: service_log_dir_path.clone(),

@@ -66,13 +66,13 @@ pub enum SubCmd {
         /// and they will need to be explicitly started again.
         #[clap(long, default_value_t = false)]
         auto_restart: bool,
-        /// Auto set NAT flags (--upnp or --home-network) if our NAT status has been obtained by
+        /// Auto set NAT flags (--upnp) if our NAT status has been obtained by
         /// running the NAT detection command.
         ///
         /// Using the argument will cause an error if the NAT detection command has not already
         /// ran.
         ///
-        /// This will override any --upnp or --home-network options.
+        /// This will override the --upnp option.
         #[clap(long, default_value_t = false)]
         auto_set_nat_flags: bool,
         /// The number of service instances.
@@ -106,11 +106,6 @@ pub enum SubCmd {
         /// Example: --env SN_LOG=all,RUST_LOG=libp2p=debug
         #[clap(name = "env", long, use_value_delimiter = true, value_parser = parse_environment_variables)]
         env_variables: Option<Vec<(String, String)>>,
-        /// Set this flag to use the safenode '--home-network' feature.
-        ///
-        /// This enables the use of safenode services from a home network with a router.
-        #[clap(long)]
-        home_network: bool,
         /// Set this flag to launch safenode with the --local flag.
         ///
         /// This is useful for building a service-based local network.
@@ -1017,7 +1012,6 @@ async fn main() -> Result<()> {
             data_dir_path,
             enable_metrics_server,
             env_variables,
-            home_network,
             local,
             log_dir_path,
             log_format,
@@ -1040,7 +1034,6 @@ async fn main() -> Result<()> {
                 data_dir_path,
                 enable_metrics_server,
                 env_variables,
-                home_network,
                 local,
                 log_dir_path,
                 log_format,

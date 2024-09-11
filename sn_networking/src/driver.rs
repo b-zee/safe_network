@@ -22,18 +22,15 @@ use crate::{
     network_discovery::NetworkDiscovery,
     record_store::{ClientRecordStore, NodeRecordStore, NodeRecordStoreConfig},
     record_store_api::UnifiedRecordStore,
-    relay_manager::RelayManager,
     replication_fetcher::ReplicationFetcher,
     target_arch::{interval, spawn, Instant},
     GetRecordError, Network, CLOSE_GROUP_SIZE,
 };
 use crate::{transport, NodeIssue};
-use futures::future::Either;
 use futures::StreamExt;
 #[cfg(feature = "local-discovery")]
 use libp2p::mdns;
 use libp2p::Transport as _;
-use libp2p::{core::muxing::StreamMuxerBox, relay};
 use libp2p::{
     identity::Keypair,
     kad::{self, QueryId, Quorum, Record, RecordKey, K_VALUE},
@@ -72,9 +69,6 @@ use xor_name::XorName;
 /// Interval over which we check for the farthest record we _should_ be holding
 /// based upon our knowledge of the CLOSE_GROUP
 pub(crate) const CLOSET_RECORD_CHECK_INTERVAL: Duration = Duration::from_secs(15);
-
-/// Interval over which we query relay manager to check if we can make any more reservations.
-pub(crate) const RELAY_MANAGER_RESERVATION_INTERVAL: Duration = Duration::from_secs(30);
 
 /// The ways in which the Get Closest queries are used.
 pub(crate) enum PendingGetClosestType {
@@ -207,15 +201,12 @@ pub(super) struct NodeBehaviour {
     pub(super) mdns: mdns::tokio::Behaviour,
     #[cfg(feature = "upnp")]
     pub(super) upnp: libp2p::swarm::behaviour::toggle::Toggle<libp2p::upnp::tokio::Behaviour>,
-    pub(super) relay_client: libp2p::relay::client::Behaviour,
-    pub(super) relay_server: libp2p::relay::Behaviour,
     pub(super) kademlia: kad::Behaviour<UnifiedRecordStore>,
     pub(super) request_response: request_response::cbor::Behaviour<Request, Response>,
 }
 
 #[derive(Debug)]
 pub struct NetworkBuilder {
-    is_behind_home_network: bool,
     keypair: Keypair,
     local: bool,
     root_dir: PathBuf,
@@ -236,7 +227,6 @@ pub struct NetworkBuilder {
 impl NetworkBuilder {
     pub fn new(keypair: Keypair, local: bool, root_dir: PathBuf) -> Self {
         Self {
-            is_behind_home_network: false,
             keypair,
             local,
             root_dir,
@@ -253,10 +243,6 @@ impl NetworkBuilder {
             #[cfg(feature = "upnp")]
             upnp: false,
         }
-    }
-
-    pub fn is_behind_home_network(&mut self, enable: bool) {
-        self.is_behind_home_network = enable;
     }
 
     pub fn listen_addr(&mut self, listen_addr: SocketAddr) {
@@ -461,24 +447,6 @@ impl NetworkBuilder {
             main_transport
         };
 
-        let (relay_transport, relay_behaviour) =
-            libp2p::relay::client::new(self.keypair.public().to_peer_id());
-        let relay_transport = relay_transport
-            .upgrade(libp2p::core::upgrade::Version::V1Lazy)
-            .authenticate(
-                libp2p::noise::Config::new(&self.keypair)
-                    .expect("Signing libp2p-noise static DH keypair failed."),
-            )
-            .multiplex(libp2p::yamux::Config::default())
-            .or_transport(transport);
-
-        let transport = relay_transport
-            .map(|either_output, _| match either_output {
-                Either::Left((peer_id, muxer)) => (peer_id, StreamMuxerBox::new(muxer)),
-                Either::Right((peer_id, muxer)) => (peer_id, StreamMuxerBox::new(muxer)),
-            })
-            .boxed();
-
         #[cfg(feature = "open-metrics")]
         let network_metrics = if let Some(port) = self.metrics_server_port {
             let network_metrics = NetworkMetricsRecorder::new(&mut metrics_registry);
@@ -594,21 +562,8 @@ impl NetworkBuilder {
         }
         .into(); // Into `Toggle<T>`
 
-        let relay_server = {
-            let relay_server_cfg = relay::Config {
-                max_reservations: 128,             // Amount of peers we are relaying for
-                max_circuits: 1024, // The total amount of relayed connections at any given moment.
-                max_circuits_per_peer: 256, // Amount of relayed connections per peer (both dst and src)
-                circuit_src_rate_limiters: vec![], // No extra rate limiting for now
-                ..Default::default()
-            };
-            libp2p::relay::Behaviour::new(peer_id, relay_server_cfg)
-        };
-
         let behaviour = NodeBehaviour {
             blocklist: libp2p::allow_block_list::Behaviour::default(),
-            relay_client: relay_behaviour,
-            relay_server,
             #[cfg(feature = "upnp")]
             upnp,
             request_response,
@@ -629,10 +584,6 @@ impl NetworkBuilder {
 
         let bootstrap = ContinuousBootstrap::new();
         let replication_fetcher = ReplicationFetcher::new(peer_id, network_event_sender.clone());
-        let mut relay_manager = RelayManager::new(peer_id);
-        if !is_client {
-            relay_manager.enable_hole_punching(self.is_behind_home_network);
-        }
         let external_address_manager = ExternalAddressManager::new(peer_id);
 
         let swarm_driver = SwarmDriver {
@@ -640,10 +591,8 @@ impl NetworkBuilder {
             self_peer_id: peer_id,
             local: self.local,
             is_client,
-            is_behind_home_network: self.is_behind_home_network,
             peers_in_rt: 0,
             bootstrap,
-            relay_manager,
             external_address_manager,
             replication_fetcher,
             #[cfg(feature = "open-metrics")]
@@ -690,11 +639,9 @@ pub struct SwarmDriver {
     /// When true, we don't filter our local addresses
     pub(crate) local: bool,
     pub(crate) is_client: bool,
-    pub(crate) is_behind_home_network: bool,
     pub(crate) peers_in_rt: usize,
     pub(crate) bootstrap: ContinuousBootstrap,
     pub(crate) external_address_manager: ExternalAddressManager,
-    pub(crate) relay_manager: RelayManager,
     /// The peers that are closer to our PeerId. Includes self.
     pub(crate) replication_fetcher: ReplicationFetcher,
     #[cfg(feature = "open-metrics")]
@@ -740,7 +687,6 @@ impl SwarmDriver {
     pub async fn run(mut self) {
         let mut bootstrap_interval = interval(BOOTSTRAP_INTERVAL);
         let mut set_farthest_record_interval = interval(CLOSET_RECORD_CHECK_INTERVAL);
-        let mut relay_manager_reservation_interval = interval(RELAY_MANAGER_RESERVATION_INTERVAL);
 
         loop {
             tokio::select! {
@@ -801,7 +747,6 @@ impl SwarmDriver {
                         }
                     }
                 }
-                _ = relay_manager_reservation_interval.tick() => self.relay_manager.try_connecting_to_relay(&mut self.swarm, &self.bad_nodes),
             }
         }
     }
@@ -968,7 +913,7 @@ impl SwarmDriver {
         }
     }
 
-    /// Listen on the provided address. Also records it within RelayManager
+    /// Listen on the provided address.
     pub(crate) fn listen_on(&mut self, addr: Multiaddr) -> Result<()> {
         let id = self.swarm.listen_on(addr.clone())?;
         info!("Listening on {id:?} with addr: {addr:?}");

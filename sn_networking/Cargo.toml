@@ -31,7 +31,6 @@ libp2p = { version = "0.53", features = [
     "cbor",
     "identify",
     "quic",
-    "relay",
     "noise",
     "tcp",
     "yamux",

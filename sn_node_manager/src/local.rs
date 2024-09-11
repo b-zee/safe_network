@@ -432,7 +432,6 @@ pub async fn run_node(
         connected_peers,
         data_dir_path: node_info.data_path,
         genesis: run_options.genesis,
-        home_network: false,
         listen_addr: Some(listen_addrs),
         local: true,
         log_dir_path: node_info.log_path,

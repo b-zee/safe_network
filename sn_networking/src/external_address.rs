@@ -16,8 +16,7 @@ const MAX_REPORTS_BEFORE_CONFIRMATION: u8 = 3;
 /// The maximum number of candidates to store
 const MAX_CANDIDATES: usize = 50;
 
-/// Manages the external addresses of a Public node. For a relayed node, the RelayManager should deal with
-/// adding and removing external addresses. We don't manage "local" addresses here.
+/// Manages the external addresses of a Public node. We don't manage "local" addresses here.
 // TODO:
 // 1. if the max candidate is reached, kick out the oldest candidate sorted by # of reports
 #[derive(Debug)]

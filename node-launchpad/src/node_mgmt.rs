@@ -168,7 +168,6 @@ async fn load_node_registry(
 struct NodeConfig {
     auto_set_nat_flags: bool,
     upnp: bool,
-    home_network: bool,
     custom_ports: Option<PortRange>,
     owner: Option<String>,
     count: u16,
@@ -222,7 +221,6 @@ fn prepare_node_config(args: &MaintainNodesArgs) -> NodeConfig {
     NodeConfig {
         auto_set_nat_flags: args.connection_mode == ConnectionMode::Automatic,
         upnp: args.connection_mode == ConnectionMode::UPnP,
-        home_network: args.connection_mode == ConnectionMode::HomeNetwork,
         custom_ports: if args.connection_mode == ConnectionMode::CustomPorts {
             args.port_range.clone()
         } else {
@@ -256,8 +254,8 @@ fn debug_log_config(config: &NodeConfig, args: &MaintainNodesArgs) {
         config.data_dir_path, args.connection_mode
     );
     debug!(
-        " auto_set_nat_flags: {:?}, custom_ports: {:?}, upnp: {}, home_network: {}",
-        config.auto_set_nat_flags, config.custom_ports, config.upnp, config.home_network
+        " auto_set_nat_flags: {:?}, custom_ports: {:?}, upnp: {}",
+        config.auto_set_nat_flags, config.custom_ports, config.upnp
     );
 }
 
@@ -291,7 +289,6 @@ async fn scale_down_nodes(config: &NodeConfig, count: u16) {
         config.data_dir_path.clone(),
         true,
         None,
-        config.home_network,
         false,
         None,
         None,
@@ -361,7 +358,6 @@ async fn add_nodes(
             config.data_dir_path.clone(),
             true,
             None,
-            config.home_network,
             false,
             None,
             None,

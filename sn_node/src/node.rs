@@ -92,8 +92,6 @@ pub struct NodeBuilder {
     #[cfg(feature = "open-metrics")]
     /// Set to Some to enable the metrics server
     metrics_server_port: Option<u16>,
-    /// Enable hole punching for nodes connecting from home networks.
-    pub is_behind_home_network: bool,
     owner: Option<String>,
     #[cfg(feature = "upnp")]
     upnp: bool,
@@ -118,7 +116,6 @@ impl NodeBuilder {
             root_dir,
             #[cfg(feature = "open-metrics")]
             metrics_server_port: None,
-            is_behind_home_network: false,
             owner,
             #[cfg(feature = "upnp")]
             upnp,
@@ -189,7 +186,6 @@ impl NodeBuilder {
         #[cfg(feature = "open-metrics")]
         network_builder.metrics_server_port(self.metrics_server_port);
         network_builder.initial_peers(self.initial_peers.clone());
-        network_builder.is_behind_home_network(self.is_behind_home_network);
 
         #[cfg(feature = "upnp")]
         network_builder.upnp(self.upnp);

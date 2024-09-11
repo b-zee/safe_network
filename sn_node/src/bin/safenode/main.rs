@@ -67,13 +67,6 @@ pub fn parse_log_output(val: &str) -> Result<LogOutputDestArg> {
 #[derive(Parser, Debug)]
 #[clap(name = "safenode cli", version = env!("CARGO_PKG_VERSION"))]
 struct Opt {
-    /// Specify whether the node is operating from a home network and situated behind a NAT without port forwarding
-    /// capabilities. Setting this to true, activates hole-punching to facilitate direct connections from other nodes.
-    ///
-    /// If this not enabled and you're behind a NAT, the node is terminated.
-    #[clap(long, default_value_t = false)]
-    home_network: bool,
-
     /// Try to use UPnP to open a port in the home router and allow incoming connections.
     #[cfg(feature = "upnp")]
     #[clap(long, default_value_t = false)]
@@ -211,7 +204,7 @@ fn main() -> Result<()> {
     rt.spawn(init_metrics(std::process::id()));
     debug!("Node's owner set to: {:?}", opt.owner);
     let restart_options = rt.block_on(async move {
-        let mut node_builder = NodeBuilder::new(
+        let node_builder = NodeBuilder::new(
             keypair,
             node_socket_addr,
             bootstrap_peers,
@@ -221,7 +214,6 @@ fn main() -> Result<()> {
             #[cfg(feature = "upnp")]
             opt.upnp,
         );
-        node_builder.is_behind_home_network = opt.home_network;
         #[cfg(feature = "open-metrics")]
         let mut node_builder = node_builder;
         // if enable flag is provided or only if the port is specified then enable the server by setting Some()

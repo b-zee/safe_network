@@ -78,9 +78,6 @@ impl<'a> ServiceStateActions for NodeService<'a> {
         if self.service_data.upnp {
             args.push(OsString::from("--upnp"));
         }
-        if self.service_data.home_network {
-            args.push(OsString::from("--home-network"));
-        }
 
         if let Some(node_port) = self.service_data.node_port {
             args.push(OsString::from("--port"));
@@ -251,7 +248,6 @@ pub struct NodeServiceData {
     pub connected_peers: Option<Vec<PeerId>>,
     pub data_dir_path: PathBuf,
     pub genesis: bool,
-    pub home_network: bool,
     pub listen_addr: Option<Vec<Multiaddr>>,
     pub local: bool,
     pub log_dir_path: PathBuf,
