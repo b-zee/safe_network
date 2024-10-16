@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "scripts": {
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "vite": "^5.4.9",
+    "vite-plugin-wasm": "^3.3.0",
+    "vitest": "^2.1.3"
+  }
+}

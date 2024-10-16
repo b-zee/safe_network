@@ -18,7 +18,7 @@ impl AttoTokens {
 
 #[wasm_bindgen(js_class = Client)]
 impl JsClient {
-    #[wasm_bindgen(constructor)]
+    #[wasm_bindgen]
     pub async fn connect(peers: Vec<String>) -> Result<JsClient, JsError> {
         let peers = peers
             .into_iter()
