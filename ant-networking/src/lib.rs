@@ -647,6 +647,7 @@ impl Network {
                 match kind {
                     RecordKind::Chunk
                     | RecordKind::ChunkWithPayment
+                    | RecordKind::TransactionWithPayment
                     | RecordKind::RegisterWithPayment
                     | RecordKind::ScratchpadWithPayment => {
                         error!("Encountered a split record for {pretty_key:?} with unexpected RecordKind {kind:?}, skipping.");
