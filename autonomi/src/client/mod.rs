@@ -103,7 +103,7 @@ impl Client {
         let peers = if let Some(peers) = config.peers {
             peers
         } else {
-            match peers_args.get_addrs(None).await {
+            match peers_args.get_addrs(None, None).await {
                 Ok(peers) => peers,
                 Err(e) => return Err(e),
             }
@@ -231,7 +231,7 @@ async fn handle_event_receiver(
                         sender
                             .send(Err(ConnectError::TimedOutWithIncompatibleProtocol(
                                 protocols,
-                                IDENTIFY_PROTOCOL_STR.to_string(),
+                                IDENTIFY_PROTOCOL_STR.read().expect("Failed to obtain read lock for IDENTIFY_PROTOCOL_STR. A call to set_network_id performed. This should not happen").clone(),
                             )))
                             .expect("receiver should not close");
                     } else {
