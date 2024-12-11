@@ -584,6 +584,15 @@ jobs:
           log_file_prefix: safe_test_logs_e2e
           platform: ${{ matrix.os }}
 
+      - name: DEBUG -- Upload client log
+        if: inputs.platform == 'ubuntu-latest'
+        uses: actions/upload-artifact@main
+        with:
+          compression-level: 9
+          name: debugginglogs
+          path: |
+            ~/.local/share/autonomi/**/*.log*
+
   # transaction_test:
   #   if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
   #   name: transaction tests against network
