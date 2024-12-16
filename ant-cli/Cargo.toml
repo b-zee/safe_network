@@ -33,9 +33,9 @@ autonomi = { path = "../autonomi", version = "0.3.0-rc.5", features = [
     "vault",
     "registers",
     "loud",
-]}
+] }
 clap = { version = "4.2.1", features = ["derive"] }
-color-eyre = "~0.6"
+color-eyre = "0.6.3"
 const-hex = "1.13.1"
 dirs-next = "~2.0.0"
 hex = "0.4.3"
@@ -55,7 +55,7 @@ tokio = { version = "1.32.0", features = [
     "sync",
     "time",
     "fs",
-]}
+] }
 tracing = { version = "~0.1.26" }
 walkdir = "2.5.0"
 
