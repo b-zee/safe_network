@@ -1,0 +1,15 @@
+[package]
+name = "autonomi-ffi"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+autonomi = { path = "../../autonomi" }
+tokio = { version = "1.41", features = ["full"] }
+libc = "0.2"
+
+[build-dependencies]
+cbindgen = "0.27"
