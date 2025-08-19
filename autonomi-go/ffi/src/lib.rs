@@ -1,5 +1,6 @@
-use autonomi::{Client, Wallet};
-use autonomi::client::address;
+use autonomi::{Client, Wallet, Network, Bytes};
+use autonomi::client::payment::PaymentOption;
+use autonomi::data::private::DataMapChunk;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::ptr;
@@ -166,10 +167,10 @@ pub extern "C" fn autonomi_client_data_put(
     let data_slice = unsafe { std::slice::from_raw_parts(data, data_len) };
     let data_vec = data_slice.to_vec();
 
-    let address = match client.runtime.block_on(
-        client.client.data_put(data_vec.into(), (&wallet.wallet).into())
+    let (_cost, data_map_chunk) = match client.runtime.block_on(
+        client.client.data_put(Bytes::from(data_vec), PaymentOption::Wallet(wallet.wallet.clone()))
     ) {
-        Ok(addr) => addr,
+        Ok(result) => result,
         Err(e) => {
             unsafe {
                 *result = FfiResult::error(ErrorCode::RuntimeError, format!("Failed to upload data: {}", e));
@@ -178,7 +179,7 @@ pub extern "C" fn autonomi_client_data_put(
         }
     };
 
-    let address_hex = format!("{:x}", address);
+    let address_hex = data_map_chunk.address();
     let c_address = match CString::new(address_hex) {
         Ok(s) => s,
         Err(e) => {
@@ -227,17 +228,17 @@ pub extern "C" fn autonomi_client_data_get(
         }
     };
 
-    let address = match address::chunk_from_hex(address_str) {
-        Ok(addr) => addr,
+    let data_map = match DataMapChunk::from_hex(address_str) {
+        Ok(dmc) => dmc,
         Err(e) => {
             unsafe {
-                *result = FfiResult::error(ErrorCode::InvalidArgument, format!("Invalid address: {}", e));
+                *result = FfiResult::error(ErrorCode::InvalidArgument, format!("Invalid data map address: {}", e));
             }
             return ptr::null_mut();
         }
     };
 
-    let data = match client.runtime.block_on(client.client.data_get(address)) {
+    let data = match client.runtime.block_on(client.client.data_get(&data_map)) {
         Ok(data) => data,
         Err(e) => {
             unsafe {
@@ -247,7 +248,7 @@ pub extern "C" fn autonomi_client_data_get(
         }
     };
 
-    let data_bytes = data.into_vec();
+    let data_bytes = data.to_vec();
     let len = data_bytes.len();
     let data_ptr = data_bytes.as_ptr() as *mut u8;
     std::mem::forget(data_bytes);
@@ -287,9 +288,15 @@ pub extern "C" fn autonomi_wallet_from_private_key_local(
         }
     };
 
-    let evm_network = autonomi::client::payment::EvmNetwork::new(true)
-        .map_err(|e| format!("Failed to create local EVM network: {}", e))
-        .unwrap();
+    let evm_network = match Network::new(true) {
+        Ok(network) => network,
+        Err(e) => {
+            unsafe {
+                *result = FfiResult::error(ErrorCode::RuntimeError, format!("Failed to create local EVM network: {}", e));
+            }
+            return ptr::null_mut();
+        }
+    };
     
     let wallet = match Wallet::new_from_private_key(evm_network, key_str) {
         Ok(w) => w,
