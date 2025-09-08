@@ -12,6 +12,9 @@ name = "uniffi-bindgen"
 path = "bindgen.rs"
 
 [dependencies]
+autonomi = { path = "../autonomi" }
+bytes = "1.0.1"
+thiserror = "1.0"
 uniffi = { version = "0.29.4", features = [ "cli" ] }
 
 [build-dependencies]
