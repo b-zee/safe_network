@@ -14,6 +14,7 @@ members = [
     "ant-service-management",
     "ant-token-supplies",
     "autonomi",
+    "autonomi-uniffi",
     "evmlib",
     "evm-testnet",
     "nat-detection",
