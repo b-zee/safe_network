@@ -1,5 +1,0 @@
-module autonomi_uniffi {
-    header "out/autonomi_uniffiFFI.h"
-    link "autonomi_uniffi"
-    export *
-}
