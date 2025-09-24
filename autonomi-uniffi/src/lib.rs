@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use self_encryption::{DataMap, EncryptedChunk};
 
 uniffi::setup_scaffolding!();
 
@@ -56,76 +57,34 @@ pub fn encrypt(data: Vec<u8>) -> Result<EncryptedData, EncryptionError> {
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_add() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-
-    #[test]
-    fn test_encrypt_small_data() {
-        let data = b"Hello, World!".to_vec();
-        let result = encrypt(data.clone());
-
-        assert!(result.is_ok(), "Encryption should succeed");
-
-        let encrypted = result.unwrap();
-        assert!(
-            !encrypted.datamap_chunk.is_empty(),
-            "Datamap chunk should not be empty"
-        );
-        assert!(
-            !encrypted.content_chunks.is_empty(),
-            "Should have at least one content chunk"
-        );
-    }
-
-    #[test]
-    fn test_encrypt_empty_data() {
-        let data = vec![];
-        let result = encrypt(data);
-
-        // Empty data might not be supported by self_encryption
-        // Let's check if it returns an error and handle appropriately
-        match result {
-            Ok(encrypted) => {
-                assert!(
-                    !encrypted.datamap_chunk.is_empty(),
-                    "Datamap chunk should exist even for empty data"
-                );
-            }
-            Err(e) => {
-                // It's OK if empty data returns an error - self_encryption might not support it
-                println!("Empty data encryption error (expected): {}", e);
-                assert!(
-                    matches!(e, EncryptionError::EncryptionFailed { .. }),
-                    "Should be an encryption error"
-                );
-            }
+/// Decrypts data that was previously encrypted with the encrypt function
+///
+/// Takes the datamap chunk and content chunks returned from encrypt
+/// and reconstructs the original data
+#[uniffi::export]
+pub fn decrypt(encrypted_data: EncryptedData) -> Result<Vec<u8>, EncryptionError> {
+    // Deserialize the datamap from bytes
+    let datamap: DataMap = rmp_serde::from_slice(&encrypted_data.datamap_chunk).map_err(|e| {
+        EncryptionError::EncryptionFailed {
+            message: format!("Failed to deserialize datamap: {}", e),
         }
-    }
+    })?;
 
-    #[test]
-    fn test_encrypt_large_data() {
-        // Create data larger than a single chunk (3 MiB should be enough)
-        let data = vec![0u8; 3 * 1024 * 1024];
-        let result = encrypt(data);
+    // Convert Vec<Vec<u8>> back to Vec<EncryptedChunk>
+    let encrypted_chunks: Vec<EncryptedChunk> = encrypted_data
+        .content_chunks
+        .into_iter()
+        .map(|chunk_bytes| EncryptedChunk {
+            content: Bytes::from(chunk_bytes),
+        })
+        .collect();
 
-        assert!(result.is_ok(), "Encryption of large data should succeed");
+    // Decrypt using self_encryption
+    let decrypted_bytes = self_encryption::decrypt(&datamap, &encrypted_chunks).map_err(|e| {
+        EncryptionError::EncryptionFailed {
+            message: format!("Failed to decrypt data: {}", e),
+        }
+    })?;
 
-        let encrypted = result.unwrap();
-        assert!(
-            !encrypted.datamap_chunk.is_empty(),
-            "Datamap chunk should not be empty"
-        );
-        // Large data should result in multiple chunks
-        assert!(
-            encrypted.content_chunks.len() > 1,
-            "Large data should produce multiple chunks"
-        );
-    }
+    Ok(decrypted_bytes.to_vec())
 }

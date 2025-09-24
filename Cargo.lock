@@ -1694,6 +1694,8 @@ version = "0.1.0"
 dependencies = [
  "autonomi",
  "bytes",
+ "rmp-serde",
+ "self_encryption 0.34.0",
  "thiserror 1.0.69",
  "uniffi",
 ]

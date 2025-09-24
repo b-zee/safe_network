@@ -11,9 +11,15 @@ name = "autonomi_uniffi"
 name = "uniffi-bindgen"
 path = "bindgen.rs"
 
+[[bin]]
+name = "uniffi-bindgen-swift"
+path = "bindgen-swift.rs"
+
 [dependencies]
 autonomi = { path = "../autonomi" }
 bytes = "1.0.1"
+rmp-serde = "1.1.1"
+self_encryption = "0.34.0"
 thiserror = "1.0"
 uniffi = { version = "0.29.4", features = [ "cli" ] }
 
